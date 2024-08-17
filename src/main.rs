@@ -12,8 +12,8 @@ fn main() {
 
     println!("Running with elevated privileges!");
 
-    //let gpu_name = std::env::args().nth(1).expect("No GPU name provided");
     let gpu_name = std::env::args().nth(1);
+    //let gpu_name = Option::from(String::from("NVIDIA GeForce RTX 3050"));
 
     if gpu_name.is_none() {
         println!("No GPU name provided");
@@ -29,32 +29,36 @@ fn main() {
         let get_power_command = Command::new("powershell")
             .arg("-Command")
             .arg(r#"(Get-WmiObject -Class BatteryStatus -Namespace "root\wmi").PowerOnline"#)
-            .spawn()
+            .output()
             .expect("Failed to execute command");
 
-        let power_status = get_power_command
-            .wait_with_output()
-            .expect("Failed to get power status");
+        // Convert the output bytes to a string
+        let power_connected = std::str::from_utf8(&get_power_command.stdout)
+            .expect("Failed to convert output to string")
+            .trim();
 
-        let power_status = power_status.stdout == "True".as_bytes();
-        println!("Power status: {}", power_status);
+        // Print the parsed output
+        println!("power_connected: {}", power_connected);
 
-        if power_status {
-            // Disable NVIDIA GPU
-            Command::new("powershell")
+        //let power_status = power_status.stdout == [1] as [u8; 1];
+        match power_connected {
+            "False" => {
+                Command::new("powershell")
                 .arg("-Command")
-                .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"*{}*\" }} | Disable-PnpDevice -Confirm:$false", gpu_name))                
+                .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"*{}*\" }} | Disable-PnpDevice -Confirm:$false", gpu_name))
                 .spawn()
                 .expect("Failed to execute command");
-        } else {
-            // Enable NVIDIA GPU
-            Command::new("powershell")
-                .arg("-Command")
-                // Use this line instead of the one below Get-PnpDevice | Where-Object { $_.FriendlyName -like "*$gpuName*" } | Enable-PnpDevice -Confirm:$false}
-                // where gpuName is gpu_name from above
-                .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"*{}*\" }} | Enable-PnpDevice -Confirm:$false", gpu_name))                
-                .spawn()
-                .expect("Failed to execute command");
+            }
+            "True" => {
+                Command::new("powershell")
+                    .arg("-Command")
+                    // Use this line instead of the one below Get-PnpDevice | Where-Object { $_.FriendlyName -like "*$gpuName*" } | Enable-PnpDevice -Confirm:$false}
+                    // where gpuName is gpu_name from above
+                    .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"*{}*\" }} | Enable-PnpDevice -Confirm:$false", gpu_name))
+                    .spawn()
+                    .expect("Failed to execute command");
+            }
+            _ => println!("Invalid!"),
         }
 
         std::thread::sleep(std::time::Duration::from_secs(10));
