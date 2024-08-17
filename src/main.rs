@@ -66,48 +66,6 @@ fn main() {
     }
 }
 
-/* fn request_admin_privileges() {
-    let is_admin = Command::new("net")
-        .arg("session")
-        .output()
-        .expect("Failed to check admin status")
-        .status
-        .success();
-
-    if !is_admin {
-        // Get the path of the current executable
-        let exe_path = std::env::current_exe().unwrap();
-        let exe_path_str = exe_path.to_str().unwrap();
-
-        // Convert the executable path and "runas" verb to wide strings
-        let exe_path_wide: Vec<u16> = exe_path_str
-            .encode_utf16()
-            .chain(std::iter::once(0))
-            .collect();
-        let runas_wide: Vec<u16> = "runas".encode_utf16().chain(std::iter::once(0)).collect();
-
-        // Attempt to relaunch the process with elevated privileges
-        let result = unsafe {
-            ShellExecuteW(
-                HWND::default(),
-                PCWSTR(runas_wide.as_ptr()),
-                PCWSTR(exe_path_wide.as_ptr()),
-                PCWSTR::null(),
-                PCWSTR::null(),
-                SW_SHOW,
-            )
-        };
-
-        // Check if the operation was successful
-        if result.0 as isize <= 32 {
-            panic!("Failed to request admin privileges.");
-        }
-
-        // Exit the current process as it will be relaunched
-        std::process::exit(0);
-    }
-} */
-
 fn request_admin_privileges() {
     // Check if the program is running with admin rights
     let is_admin = Command::new("net")
