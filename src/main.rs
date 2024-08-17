@@ -129,20 +129,23 @@ fn request_admin_privileges() {
             .collect();
         let runas_wide: Vec<u16> = "runas".encode_utf16().chain(std::iter::once(0)).collect();
 
-        // Attempt to relaunch the process with elevated privileges and pass in env vars
-        let result = Command::new(exe_path_str)
-            .env("RUNAS_ADMIN", "1")
-            .spawn()
-            .expect("Failed to request admin privileges.");
+        // Get the current command-line arguments
+        let args: Vec<String> = std::env::args().skip(1).collect();
+        let args_wide: Vec<u16> = args
+            .join(" ")
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
 
+        // Attempt to relaunch the process with elevated privileges
         let result = unsafe {
             ShellExecuteW(
-                HWND::default(),                // Parent window handle (None)
-                PCWSTR(runas_wide.as_ptr()),    // Verb ("runas" for elevation)
+                HWND::default(),
+                PCWSTR(runas_wide.as_ptr()), // Verb ("runas" for elevation)
                 PCWSTR(exe_path_wide.as_ptr()), // Path to the executable
-                PCWSTR::null(),                 // Parameters (None)
-                PCWSTR::null(),                 // Directory (None)
-                SW_SHOW,                        // Show window flag
+                PCWSTR(args_wide.as_ptr()),  // Pass the arguments
+                PCWSTR::null(),              // Directory (None)
+                SW_SHOW,                     // Show window flag
             )
         };
 
@@ -151,7 +154,7 @@ fn request_admin_privileges() {
             panic!("Failed to request admin privileges.");
         }
 
-        // If ShellExecuteW succeeds, the original process should exit
+        // Exit the current process as it will be relaunched
         std::process::exit(0);
     }
 }
