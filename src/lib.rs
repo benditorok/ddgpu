@@ -73,6 +73,7 @@ pub mod on_windows {
         println!("Running with elevated privileges!");
 
         // Collect the command-line arguments
+        // TODO create separate fn to collect args
         let args_raw: Vec<String> = env::args().skip(1).collect();
         let mut args_collected: HashMap<&str, String> = HashMap::new();
         let mut last_switch_key: &str = "";
@@ -123,6 +124,8 @@ pub mod on_windows {
                 .expect("Failed to convert output to string")
                 .trim();
 
+            let power_connected = power_connected == "True";
+
             // Print the parsed output
             println!("AC power connected: {}", power_connected);
 
@@ -148,23 +151,24 @@ pub mod on_windows {
             println!("dbg {:?}", gpu_status);
 
             match power_connected {
-                "False" => {
+                false => {
                     println!("Disabling the GPU...");
+
                     Command::new("powershell")
                     .arg("-Command")
                     .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Disable-PnpDevice -Confirm:$false", gpu_name))
                     .spawn()
                     .expect("Failed to execute command");
                 }
-                "True" => {
+                true => {
                     println!("Enabling the GPU...");
+
                     Command::new("powershell")
                         .arg("-Command")
                         .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Enable-PnpDevice -Confirm:$false", gpu_name))
                         .spawn()
                         .expect("Failed to execute command");
                 }
-                _ => println!("Invalid!"),
             }
 
             thread::sleep(time::Duration::from_secs(10));
