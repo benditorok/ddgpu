@@ -1,9 +1,9 @@
 #[cfg(target_os = "windows")]
 pub mod on_windows {
+    use std::error::Error;
     use std::{
         collections::HashMap,
         env,
-        fmt::Error,
         process::Command,
         thread,
         time::{self, Duration},
@@ -14,8 +14,7 @@ pub mod on_windows {
         Win32::UI::Shell::ShellExecuteW,
         Win32::UI::WindowsAndMessaging::SW_SHOW,
     };
-
-    pub fn request_admin_privileges() {
+    pub fn request_admin_privileges() -> Result<(), Box<dyn Error>> {
         // Check if the program is running with admin rights
         let is_admin = Command::new("net")
             .arg("session")
@@ -26,7 +25,7 @@ pub mod on_windows {
 
         if !is_admin {
             // Get the path of the current executable
-            let exe_path = std::env::current_exe().unwrap();
+            let exe_path = env::current_exe()?;
             let exe_path_str = exe_path.to_str().unwrap();
 
             // Convert the executable path and "runas" verb to wide strings
@@ -64,11 +63,13 @@ pub mod on_windows {
             // Exit the current process as it will be relaunched
             std::process::exit(0);
         }
+
+        Ok(())
     }
 
-    pub fn run() -> Result<(), Error> {
+    pub fn run() -> Result<(), Box<dyn Error>> {
         // Check if the program is running with admin rights, if not, relaunch it as admin
-        request_admin_privileges();
+        request_admin_privileges()?;
         println!("Running with elevated privileges!");
 
         // Collect the command-line arguments
@@ -125,15 +126,38 @@ pub mod on_windows {
             // Print the parsed output
             println!("AC power connected: {}", power_connected);
 
+            // get the status of the GPU
+            let get_gpu_status_command = Command::new("powershell")
+                .arg("-Command")
+                .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Select-Object -Property Status", gpu_name))
+                .output()
+                .expect("Failed to execute command");
+
+            let gpu_status = std::str::from_utf8(&get_gpu_status_command.stdout)
+                .expect("Failed to convert output to string")
+                .trim();
+
+            if gpu_status.contains("OK") {
+                println!("The GPU is enabled.");
+            } else if gpu_status.contains("Error") {
+                println!("The GPU is disabled.");
+            } else {
+                println!("Unable to determine the GPU status.");
+            }
+
+            println!("dbg {:?}", gpu_status);
+
             match power_connected {
                 "False" => {
+                    println!("Disabling the GPU...");
                     Command::new("powershell")
-                        .arg("-Command")
-                        .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Disable-PnpDevice -Confirm:$false", gpu_name))
-                        .spawn()
-                        .expect("Failed to execute command");
+                    .arg("-Command")
+                    .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Disable-PnpDevice -Confirm:$false", gpu_name))
+                    .spawn()
+                    .expect("Failed to execute command");
                 }
                 "True" => {
+                    println!("Enabling the GPU...");
                     Command::new("powershell")
                         .arg("-Command")
                         .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Enable-PnpDevice -Confirm:$false", gpu_name))

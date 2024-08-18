@@ -2,8 +2,8 @@ fn main() {
     // Run with cargo run -- --name 'NVIDIA GeForce RTX 3050 Laptop GPU'
 
     #[cfg(target_os = "windows")]
-    if let Err(run_err) = ddgpu::on_windows::run() {
-        println!("Program failed to run! Error: {}", run_err);
+    if let Err(e) = ddgpu::on_windows::run() {
+        println!("Program failed to run! Error: {}", e);
         println!("Press enter to exit");
 
         std::io::stdin().read_line(&mut String::new()).unwrap();
