@@ -1,5 +1,49 @@
+pub mod app {
+    use std::error::Error;
+    use std::{collections::HashMap, env};
+
+    pub const GPU_NAME: &str = "--name";
+    pub const HIDE_WINDOW: &str = "--hide";
+
+    pub struct Arguments<'keys> {
+        pub gpu_name: &'keys str,
+        pub hide_window: &'keys str,
+    }
+
+    impl<'keys> Arguments<'keys> {
+        // Collect the command-line arguments
+        pub fn parse_args(&self) -> Result<HashMap<&'keys str, String>, Box<dyn Error>> {
+            let args_raw: Vec<String> = env::args().skip(1).collect();
+            let mut args_collected: HashMap<&str, String> = HashMap::new();
+            let mut last_switch_key: &str = "";
+
+            for arg in args_raw.iter() {
+                match arg.trim() {
+                    i if i == self.gpu_name => last_switch_key = self.gpu_name,
+                    i if i == self.hide_window => last_switch_key = self.hide_window,
+                    _ => {
+                        if !last_switch_key.is_empty() {
+                            let old_args = args_collected.get(last_switch_key);
+
+                            if let Some(old_args) = old_args {
+                                args_collected
+                                    .insert(last_switch_key, [old_args, arg.trim()].join(" "));
+                            } else {
+                                args_collected.insert(last_switch_key, arg.trim().to_string());
+                            }
+                        }
+                    }
+                }
+            }
+
+            Ok(args_collected)
+        }
+    }
+}
+
 #[cfg(target_os = "windows")]
 pub mod on_windows {
+    use super::app;
     use std::error::Error;
     use std::{
         collections::HashMap,
@@ -67,38 +111,13 @@ pub mod on_windows {
         Ok(())
     }
 
-    pub fn run() -> Result<(), Box<dyn Error>> {
+    pub fn run(args: &app::Arguments) -> Result<(), Box<dyn Error>> {
         // Check if the program is running with admin rights, if not, relaunch it as admin
         request_admin_privileges()?;
         println!("Running with elevated privileges!");
 
-        // Collect the command-line arguments
-        // TODO create separate fn to collect args
-        let args_raw: Vec<String> = env::args().skip(1).collect();
-        let mut args_collected: HashMap<&str, String> = HashMap::new();
-        let mut last_switch_key: &str = "";
-
-        for arg in args_raw.iter() {
-            match arg.trim() {
-                "--name" => {
-                    last_switch_key = "--name";
-                }
-                _ => {
-                    if !last_switch_key.is_empty() {
-                        let mut old_args = args_collected.get(last_switch_key);
-
-                        if let Some(old_args) = old_args {
-                            args_collected
-                                .insert(last_switch_key, [old_args, arg.trim()].join(" "));
-                        } else {
-                            args_collected.insert(last_switch_key, arg.trim().to_string());
-                        }
-                    }
-                }
-            }
-        }
-
-        let gpu_name = args_collected.get("--name");
+        let parsed_args = args.parse_args()?;
+        let gpu_name = parsed_args.get(app::GPU_NAME);
 
         if let Some(gpu_name) = gpu_name {
             println!("GPU name: {}", gpu_name);
