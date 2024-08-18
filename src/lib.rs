@@ -113,29 +113,24 @@ pub mod on_windows {
         let gpu_name = gpu_name.unwrap();
 
         loop {
+            // Get the current power status
             let get_power_command = Command::new("powershell")
                 .arg("-Command")
                 .arg(r#"(Get-WmiObject -Class BatteryStatus -Namespace "root\wmi").PowerOnline"#)
                 .output()
                 .expect("Failed to execute command");
-
-            // Convert the output bytes to a string
             let power_connected = std::str::from_utf8(&get_power_command.stdout)
                 .expect("Failed to convert output to string")
                 .trim();
-
             let power_connected = power_connected == "True";
-
-            // Print the parsed output
             println!("AC power connected: {}", power_connected);
 
-            // get the status of the GPU
+            // Get the current status of the GPU
             let get_gpu_status_command = Command::new("powershell")
                 .arg("-Command")
                 .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Select-Object -Property Status", gpu_name))
                 .output()
                 .expect("Failed to execute command");
-
             let gpu_status = std::str::from_utf8(&get_gpu_status_command.stdout)
                 .expect("Failed to convert output to string")
                 .trim();
@@ -145,29 +140,33 @@ pub mod on_windows {
             } else if gpu_status.contains("Error") {
                 println!("The GPU is disabled.");
             } else {
-                println!("Unable to determine the GPU status.");
+                return Err("Unable to determine the GPU status.".into());
             }
 
-            println!("dbg {:?}", gpu_status);
+            let gpu_status = gpu_status.contains("OK");
 
-            match power_connected {
-                false => {
-                    println!("Disabling the GPU...");
+            // Check if the power status has changed
+            // GPU should only be enabled if the power is connected
+            if gpu_status != power_connected {
+                match power_connected {
+                    false => {
+                        println!("Disabling the GPU...");
 
-                    Command::new("powershell")
-                    .arg("-Command")
-                    .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Disable-PnpDevice -Confirm:$false", gpu_name))
-                    .spawn()
-                    .expect("Failed to execute command");
-                }
-                true => {
-                    println!("Enabling the GPU...");
-
-                    Command::new("powershell")
+                        Command::new("powershell")
                         .arg("-Command")
-                        .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Enable-PnpDevice -Confirm:$false", gpu_name))
+                        .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Disable-PnpDevice -Confirm:$false", gpu_name))
                         .spawn()
                         .expect("Failed to execute command");
+                    }
+                    true => {
+                        println!("Enabling the GPU...");
+
+                        Command::new("powershell")
+                            .arg("-Command")
+                            .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Enable-PnpDevice -Confirm:$false", gpu_name))
+                            .spawn()
+                            .expect("Failed to execute command");
+                    }
                 }
             }
 
