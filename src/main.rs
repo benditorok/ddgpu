@@ -1,6 +1,6 @@
 fn main() {
     #[cfg(target_os = "windows")]
-    ddgpu::run_windows();
+    ddgpu::on_windows::run();
 
     #[cfg(not(target_os = "windows"))]
     {
