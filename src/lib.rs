@@ -1,6 +1,13 @@
 #[cfg(target_os = "windows")]
 pub mod on_windows {
-    use std::{collections::HashMap, env, fmt::Error, process::Command, time::Duration};
+    use std::{
+        collections::HashMap,
+        env,
+        fmt::Error,
+        process::Command,
+        thread,
+        time::{self, Duration},
+    };
     use windows::{
         core::PCWSTR,
         Win32::Foundation::{HINSTANCE, HWND},
@@ -116,30 +123,27 @@ pub mod on_windows {
                 .trim();
 
             // Print the parsed output
-            println!("power_connected: {}", power_connected);
+            println!("AC power connected: {}", power_connected);
 
-            //let power_status = power_status.stdout == [1] as [u8; 1];
             match power_connected {
                 "False" => {
                     Command::new("powershell")
-                .arg("-Command")
-                .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Disable-PnpDevice -Confirm:$false", gpu_name))
-                .spawn()
-                .expect("Failed to execute command");
+                        .arg("-Command")
+                        .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Disable-PnpDevice -Confirm:$false", gpu_name))
+                        .spawn()
+                        .expect("Failed to execute command");
                 }
                 "True" => {
                     Command::new("powershell")
-            .arg("-Command")
-            // Use this line instead of the one below Get-PnpDevice | Where-Object { $_.FriendlyName -like "*$gpuName*" } | Enable-PnpDevice -Confirm:$false}
-            // where gpuName is gpu_name from above
-            .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Enable-PnpDevice -Confirm:$false", gpu_name))
-            .spawn()
-            .expect("Failed to execute command");
+                        .arg("-Command")
+                        .arg(format!("Get-PnpDevice | Where-Object {{ $_.FriendlyName -like \"{}\" }} | Enable-PnpDevice -Confirm:$false", gpu_name))
+                        .spawn()
+                        .expect("Failed to execute command");
                 }
                 _ => println!("Invalid!"),
             }
 
-            std::thread::sleep(std::time::Duration::from_secs(10));
+            thread::sleep(time::Duration::from_secs(10));
         }
     }
 }
