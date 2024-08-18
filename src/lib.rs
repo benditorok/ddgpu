@@ -1,6 +1,6 @@
 #[cfg(target_os = "windows")]
 pub mod on_windows {
-    use std::{process::Command, time::Duration};
+    use std::{collections::HashMap, env, fmt::Error, process::Command, time::Duration};
     use windows::{
         core::PCWSTR,
         Win32::Foundation::{HINSTANCE, HWND},
@@ -8,7 +8,7 @@ pub mod on_windows {
         Win32::UI::WindowsAndMessaging::SW_SHOW,
     };
 
-    pub fn request_admin_privileges_windows() {
+    pub fn request_admin_privileges() {
         // Check if the program is running with admin rights
         let is_admin = Command::new("net")
             .arg("session")
@@ -59,15 +59,41 @@ pub mod on_windows {
         }
     }
 
-    pub fn run() {
-        request_admin_privileges_windows();
-
+    pub fn run() -> Result<(), Error> {
+        // Check if the program is running with admin rights, if not, relaunch it as admin
+        request_admin_privileges();
         println!("Running with elevated privileges!");
 
-        let gpu_name = std::env::args().nth(1);
-        //let gpu_name = Option::from(String::from("NVIDIA GeForce RTX 3050"));
+        // Collect the command-line arguments
+        let args_raw: Vec<String> = env::args().skip(1).collect();
+        let mut args_collected: HashMap<&str, String> = HashMap::new();
+        let mut last_switch_key: &str = "";
 
-        if gpu_name.is_none() {
+        for arg in args_raw.iter() {
+            match arg.trim() {
+                "--name" => {
+                    last_switch_key = "--name";
+                }
+                _ => {
+                    if !last_switch_key.is_empty() {
+                        let mut old_args = args_collected.get(last_switch_key);
+
+                        if let Some(old_args) = old_args {
+                            args_collected
+                                .insert(last_switch_key, [old_args, arg.trim()].join(" "));
+                        } else {
+                            args_collected.insert(last_switch_key, arg.trim().to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        let gpu_name = args_collected.get("--name");
+
+        if let Some(gpu_name) = gpu_name {
+            println!("GPU name: {}", gpu_name);
+        } else {
             println!("No GPU name provided");
             println!("Press enter to exit");
 
@@ -76,7 +102,6 @@ pub mod on_windows {
         }
 
         let gpu_name = gpu_name.unwrap();
-        println!("GPU name: {}", gpu_name);
 
         loop {
             let get_power_command = Command::new("powershell")
