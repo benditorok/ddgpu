@@ -52,6 +52,8 @@ pub mod on_windows {
         thread,
         time::{self, Duration},
     };
+    use windows::Win32::System::Console::GetConsoleWindow;
+    use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, HIDE_WINDOW, SW_HIDE};
     use windows::{
         core::PCWSTR,
         Win32::Foundation::{HINSTANCE, HWND},
@@ -111,6 +113,19 @@ pub mod on_windows {
         Ok(())
     }
 
+    fn hide_console_window() {
+        // Get the handle to the console window
+        let window: HWND = unsafe { GetConsoleWindow() };
+
+        // Check if the window handle is not null
+        if window.0 as isize != 0 {
+            // Hide the console window
+            unsafe {
+                ShowWindow(window, SW_HIDE);
+            }
+        }
+    }
+
     pub fn run(args: &app::Arguments) -> Result<(), Box<dyn Error>> {
         // Check if the program is running with admin rights, if not, relaunch it as admin
         request_admin_privileges()?;
@@ -130,6 +145,16 @@ pub mod on_windows {
         }
 
         let gpu_name = gpu_name.unwrap();
+
+        let hide_window = parsed_args.get(app::HIDE_WINDOW);
+
+        if let Some(hide_window) = hide_window {
+            let hide_window = hide_window == "true";
+
+            if hide_window {
+                hide_console_window();
+            }
+        }
 
         loop {
             // Get the current power status

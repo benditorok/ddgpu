@@ -1,7 +1,7 @@
 use ddgpu::app;
 
 fn main() {
-    // Run with cargo run -- --name 'NVIDIA GeForce RTX 3050 Laptop GPU'
+    // Run with cargo run -- --name "NVIDIA GeForce RTX 3050 Laptop GPU" --hide false
 
     let args = app::Arguments {
         gpu_name: app::GPU_NAME,
