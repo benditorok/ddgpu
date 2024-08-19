@@ -167,7 +167,12 @@ pub mod on_windows {
                 .expect("Failed to convert output to string")
                 .trim();
             let power_connected = power_connected == "True";
-            println!("AC power connected: {}", power_connected);
+
+            if power_connected {
+                println!("AC power connected.");
+            } else {
+                println!("Running on battery.");
+            }
 
             // Get the current status of the GPU
             let get_gpu_status_command = Command::new("powershell")
