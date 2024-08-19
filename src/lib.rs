@@ -1,13 +1,17 @@
+pub mod windows_service;
+
 pub mod app {
     use std::error::Error;
     use std::{collections::HashMap, env};
 
     pub const GPU_NAME: &str = "--name";
     pub const HIDE_WINDOW: &str = "--hide";
+    pub const RUN_AS_SERVICE: &str = "--as-service";
 
     pub struct Arguments<'keys> {
         pub gpu_name: &'keys str,
         pub hide_window: &'keys str,
+        pub run_as_service: &'keys str,
     }
 
     impl<'keys> Arguments<'keys> {
@@ -21,6 +25,7 @@ pub mod app {
                 match arg.trim() {
                     i if i == self.gpu_name => last_switch_key = self.gpu_name,
                     i if i == self.hide_window => last_switch_key = self.hide_window,
+                    i if i == self.run_as_service => last_switch_key = self.run_as_service,
                     _ => {
                         if !last_switch_key.is_empty() {
                             let old_args = args_collected.get(last_switch_key);
