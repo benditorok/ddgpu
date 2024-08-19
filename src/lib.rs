@@ -9,6 +9,7 @@ pub mod app {
     pub const RUN_AS_SERVICE: &str = "--as-service";
 
     pub struct Arguments<'keys> {
+        // TODO make these options with the values instead of keys
         pub gpu_name: &'keys str,
         pub hide_window: &'keys str,
         pub run_as_service: &'keys str,
@@ -23,6 +24,7 @@ pub mod app {
 
             for arg in args_raw.iter() {
                 match arg.trim() {
+                    // TODO match on leading '--' instead
                     i if i == self.gpu_name => last_switch_key = self.gpu_name,
                     i if i == self.hide_window => last_switch_key = self.hide_window,
                     i if i == self.run_as_service => last_switch_key = self.run_as_service,
