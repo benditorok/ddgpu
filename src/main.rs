@@ -3,21 +3,19 @@ use ddgpu::app;
 fn main() {
     // Run with cargo run -- --name "NVIDIA GeForce RTX 3050 Laptop GPU" --hide false
 
-    let args = app::Arguments {
-        gpu_name: app::GPU_NAME,
-        hide_window: app::HIDE_WINDOW,
-        run_as_service: app::RUN_AS_SERVICE,
-    };
+    let mut args = app::Arguments::new();
+    args.init().unwrap_or_else(|e| {
+        eprintln!("Failed to parse arguments: {:?}", e);
+        std::io::stdin().read_line(&mut String::new()).unwrap();
+        std::process::exit(0);
+    });
 
     let as_service_default = String::from("False");
+    let as_service = args
+        .get_value(app::RUN_AS_SERVICE)
+        .unwrap_or(as_service_default);
 
-    let parsed_args = args.parse_args().unwrap();
-    let run_as_service = parsed_args
-        .get(app::RUN_AS_SERVICE)
-        .to_owned()
-        .unwrap_or(&as_service_default);
-
-    if run_as_service.as_str() == "true" {
+    if as_service.as_str() == "true" {
         #[cfg(target_os = "windows")]
         if let Err(e) = ddgpu::windows_service::run_windows_service() {
             eprintln!("Failed to run as a service: {:?}", e);

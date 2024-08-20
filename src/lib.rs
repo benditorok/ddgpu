@@ -8,42 +8,62 @@ pub mod app {
     pub const HIDE_WINDOW: &str = "--hide";
     pub const RUN_AS_SERVICE: &str = "--as-service";
 
-    pub struct Arguments<'keys> {
-        // TODO make these options with the values instead of keys
-        pub gpu_name: &'keys str,
-        pub hide_window: &'keys str,
-        pub run_as_service: &'keys str,
+    #[derive(Debug, Clone)]
+    pub struct Arguments {
+        parsed_args: Option<HashMap<String, String>>,
     }
 
-    impl<'keys> Arguments<'keys> {
-        // Collect the command-line arguments
-        pub fn parse_args(&self) -> Result<HashMap<&'keys str, String>, Box<dyn Error>> {
-            let args_raw: Vec<String> = env::args().skip(1).collect();
-            let mut args_collected: HashMap<&str, String> = HashMap::new();
-            let mut last_switch_key: &str = "";
+    impl Arguments {
+        pub fn new() -> Self {
+            Self { parsed_args: None }
+        }
 
-            for arg in args_raw.iter() {
+        // Collect the command-line arguments
+        pub fn init(&mut self) -> Result<(), Box<dyn Error>> {
+            let args_raw: Vec<String> = env::args().skip(1).collect();
+            let mut args_collected: HashMap<String, String> = HashMap::new();
+            let mut last_switch_key: String = String::new();
+
+            for arg in args_raw.into_iter() {
                 match arg.trim() {
-                    // TODO match on leading '--' instead
-                    i if i == self.gpu_name => last_switch_key = self.gpu_name,
-                    i if i == self.hide_window => last_switch_key = self.hide_window,
-                    i if i == self.run_as_service => last_switch_key = self.run_as_service,
+                    switch if switch.starts_with("--") => last_switch_key = String::from(switch),
                     _ => {
                         if !last_switch_key.is_empty() {
-                            let old_args = args_collected.get(last_switch_key);
+                            let new_arg = arg.clone();
+                            let old_args = args_collected.get(last_switch_key.as_str());
 
                             if let Some(old_args) = old_args {
-                                args_collected
-                                    .insert(last_switch_key, [old_args, arg.trim()].join(" "));
+                                args_collected.insert(
+                                    last_switch_key.clone(),
+                                    [old_args, new_arg.as_str()].join(" "),
+                                );
                             } else {
-                                args_collected.insert(last_switch_key, arg.trim().to_string());
+                                args_collected.insert(last_switch_key.clone(), new_arg.to_string());
                             }
                         }
                     }
                 }
             }
 
-            Ok(args_collected)
+            self.parsed_args = Some(args_collected);
+            Ok(())
+        }
+
+        // Returns a clone of the parsed args.
+        pub fn get_parsed_args(&self) -> Option<HashMap<String, String>> {
+            if let Some(parsed_args) = &self.parsed_args {
+                return Some(parsed_args.clone());
+            } else {
+                return None;
+            }
+        }
+
+        pub fn get_value(&self, key: &str) -> Option<String> {
+            if let Some(parsed_args) = &self.parsed_args {
+                return parsed_args.get(key).cloned();
+            } else {
+                return None;
+            }
         }
     }
 }
@@ -128,7 +148,7 @@ pub mod on_windows {
         if window.0 as isize != 0 {
             // Hide the console window
             unsafe {
-                ShowWindow(window, SW_HIDE);
+                let _ = ShowWindow(window, SW_HIDE);
             }
         }
     }
@@ -138,22 +158,15 @@ pub mod on_windows {
         request_admin_privileges()?;
         println!("Running with elevated privileges!");
 
-        let parsed_args = args.parse_args()?;
-        let gpu_name = parsed_args.get(app::GPU_NAME);
-
-        if let Some(gpu_name) = gpu_name {
-            println!("GPU name: {}", gpu_name);
-        } else {
+        let gpu_name = args.get_value(app::GPU_NAME).unwrap_or_else(|| {
             println!("No GPU name provided");
             println!("Press enter to exit");
 
             std::io::stdin().read_line(&mut String::new()).unwrap();
             std::process::exit(0);
-        }
+        });
 
-        let gpu_name = gpu_name.unwrap();
-
-        let hide_window = parsed_args.get(app::HIDE_WINDOW);
+        let hide_window = args.get_value(app::HIDE_WINDOW);
 
         if let Some(hide_window) = hide_window {
             let hide_window = hide_window == "true";

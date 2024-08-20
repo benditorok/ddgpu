@@ -2,7 +2,6 @@ use super::{app, on_windows};
 
 #[cfg(target_os = "windows")]
 pub fn run_windows_service() -> windows_service::Result<()> {
-    use std::thread;
     use std::time::Duration;
     use windows_service::service::{
         ServiceControl, ServiceControlAccept, ServiceExitCode, ServiceState, ServiceStatus,
@@ -22,6 +21,13 @@ pub fn run_windows_service() -> windows_service::Result<()> {
     }
 
     fn run_service() -> windows_service::Result<()> {
+        // TODO recieve this from main
+        let mut args = app::Arguments::new();
+        args.init().unwrap_or_else(|e| {
+            eprintln!("Failed to parse arguments: {:?}", e);
+            std::io::stdin().read_line(&mut String::new()).unwrap();
+            std::process::exit(0);
+        });
         let status_handle = service_control_handler::register(SERVICE_NAME, service_handler)?;
 
         status_handle.set_service_status(ServiceStatus {
@@ -34,7 +40,6 @@ pub fn run_windows_service() -> windows_service::Result<()> {
             process_id: None,
         })?;
 
-        // Simulate service work
         status_handle.set_service_status(ServiceStatus {
             current_state: ServiceState::Running,
             service_type: ServiceType::OWN_PROCESS,
@@ -46,14 +51,6 @@ pub fn run_windows_service() -> windows_service::Result<()> {
         })?;
 
         // Service runs until stopped
-        // TODO recieve this from main
-        let args = app::Arguments {
-            gpu_name: app::GPU_NAME,
-            hide_window: app::HIDE_WINDOW,
-            run_as_service: app::RUN_AS_SERVICE,
-        };
-
-        // TODO cannot stop service from Services
         if let Err(e) = on_windows::run(&args) {
             println!("Program failed to run! Error: {}", e);
             println!("Press enter to exit");
@@ -78,6 +75,7 @@ pub fn run_windows_service() -> windows_service::Result<()> {
 
     fn service_handler(control: ServiceControl) -> ServiceControlHandlerResult {
         match control {
+            // TODO cannot stop service from Services
             ServiceControl::Stop => {
                 // Handle stop event
                 ServiceControlHandlerResult::NoError
