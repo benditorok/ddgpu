@@ -22,7 +22,7 @@ pub fn run_windows_service() -> windows_service::Result<()> {
 
     fn run_service() -> windows_service::Result<()> {
         // TODO recieve this from main
-        let mut args = app::Arguments::new();
+        let mut args = app::Arguments::default();
         args.init().unwrap_or_else(|e| {
             eprintln!("Failed to parse arguments: {:?}", e);
             std::io::stdin().read_line(&mut String::new()).unwrap();

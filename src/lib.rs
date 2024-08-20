@@ -8,16 +8,12 @@ pub mod app {
     pub const HIDE_WINDOW: &str = "--hide";
     pub const RUN_AS_SERVICE: &str = "--as-service";
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Default)]
     pub struct Arguments {
         parsed_args: Option<HashMap<String, String>>,
     }
 
     impl Arguments {
-        pub fn new() -> Self {
-            Self { parsed_args: None }
-        }
-
         // Collect the command-line arguments
         pub fn init(&mut self) -> Result<(), Box<dyn Error>> {
             let args_raw: Vec<String> = env::args().skip(1).collect();
@@ -51,18 +47,14 @@ pub mod app {
 
         // Returns a clone of the parsed args.
         pub fn get_parsed_args(&self) -> Option<HashMap<String, String>> {
-            if let Some(parsed_args) = &self.parsed_args {
-                return Some(parsed_args.clone());
-            } else {
-                return None;
-            }
+            self.parsed_args.clone()
         }
 
         pub fn get_value(&self, key: &str) -> Option<String> {
             if let Some(parsed_args) = &self.parsed_args {
-                return parsed_args.get(key).cloned();
+                parsed_args.get(key).cloned()
             } else {
-                return None;
+                None
             }
         }
     }

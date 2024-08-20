@@ -3,7 +3,7 @@ use ddgpu::app;
 fn main() {
     // Run with cargo run -- --name "NVIDIA GeForce RTX 3050 Laptop GPU" --hide false
 
-    let mut args = app::Arguments::new();
+    let mut args = app::Arguments::default();
     args.init().unwrap_or_else(|e| {
         eprintln!("Failed to parse arguments: {:?}", e);
         std::io::stdin().read_line(&mut String::new()).unwrap();
